@@ -1,0 +1,85 @@
+# Atlas Platform Code Owners
+# This file defines who is responsible for reviewing changes to specific parts of the codebase
+# This helps prevent conflicts by ensuring the right people review critical changes
+
+# Global owners - these users are requested for review for all changes
+* @atlas-admin @atlas-core-team
+
+# Core application files
+/src/App.tsx @atlas-admin @frontend-team
+/src/main.tsx @atlas-admin @frontend-team
+/package.json @atlas-admin @atlas-core-team
+/package-lock.json @atlas-admin @atlas-core-team
+/tsconfig*.json @atlas-admin @atlas-core-team
+/vite.config.ts @atlas-admin @frontend-team
+
+# Frontend components
+/src/components/ @frontend-team
+/src/components/ui/ @ui-team @frontend-team
+/src/hooks/ @frontend-team
+/src/lib/ @frontend-team
+
+# Pages and routing
+/src/pages/ @frontend-team
+/src/pages/enterprise/ @enterprise-team @frontend-team
+/src/pages/dashboard/ @dashboard-team @frontend-team
+
+# Backend services
+/src/backend/ @backend-team
+/src/backend/routes/ @backend-team @api-team
+/src/backend/services/ @backend-team
+/src/backend/middleware/ @backend-team @security-team
+/src/backend/database/ @database-team @backend-team
+
+# Enterprise features
+/src/components/enterprise/ @enterprise-team
+/src/services/enterprise* @enterprise-team @backend-team
+/src/pages/enterprise/ @enterprise-team @frontend-team
+
+# Critical configuration files
+/.github/ @atlas-admin @devops-team
+/vercel.json @atlas-admin @devops-team
+/tailwind.config.ts @ui-team @frontend-team
+/postcss.config.js @ui-team @frontend-team
+
+# Documentation
+/README.md @atlas-admin @documentation-team
+/DEPLOYMENT.md @devops-team @atlas-admin
+/*.md @documentation-team
+
+# Security sensitive files
+/src/backend/config/ @security-team @backend-team
+/src/backend/middleware/auth.ts @security-team @backend-team
+/src/integrations/supabase/ @security-team @backend-team
+
+# Build and deployment
+/Dockerfile @devops-team
+/docker-compose*.yml @devops-team
+/.dockerignore @devops-team
+/netlify.toml @devops-team
+/vercel.json @devops-team
+
+# Specific conflict-prone files
+/src/components/Hero.tsx @content-team @frontend-team
+/src/components/Navbar.tsx @navigation-team @frontend-team
+/src/pages/Register.tsx @auth-team @frontend-team
+/src/components/revolutionary/AutonomousComplianceEngine.tsx @compliance-team @enterprise-team
+
+# Database and migrations
+/src/backend/database/migrations.ts @database-team @backend-team
+/src/backend/database/*migration*.sql @database-team @backend-team
+/supabase/ @database-team @backend-team
+
+# API routes that need careful review
+/src/backend/routes/enterprise.ts @enterprise-team @api-team @backend-team
+/src/backend/routes/auth.ts @auth-team @security-team @backend-team
+/src/backend/routes/payments.ts @payments-team @security-team @backend-team
+
+# Notification system
+/src/backend/services/notifications/ @notifications-team @backend-team
+
+# Testing files
+**/*.test.* @qa-team @frontend-team @backend-team
+**/*.spec.* @qa-team @frontend-team @backend-team
+/cypress/ @qa-team
+/jest.config.* @qa-team

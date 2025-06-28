@@ -1,0 +1,129 @@
+{
+  "projectId": "atlas-platform",
+  "orgId": "atlas-org",
+
+  "settings": {
+    "buildCommand": "npm run build:prod",
+    "devCommand": "npm run dev",
+    "installCommand": "npm ci",
+    "outputDirectory": "dist",
+    "framework": "vite",
+    "nodeVersion": "18.x"
+  },
+
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "development": true,
+      "staging": true
+    },
+    "productionBranch": "main",
+    "deployHooks": {
+      "main": {
+        "url": "https://api.vercel.com/v1/integrations/deploy/...",
+        "ref": "main"
+      }
+    }
+  },
+
+  "env": [
+    {
+      "key": "NODE_ENV",
+      "value": "production",
+      "type": "plain",
+      "target": ["production"]
+    },
+    {
+      "key": "NODE_ENV",
+      "value": "development",
+      "type": "plain",
+      "target": ["development", "preview"]
+    },
+    {
+      "key": "VITE_APP_ENV",
+      "value": "production",
+      "type": "plain",
+      "target": ["production"]
+    },
+    {
+      "key": "VITE_APP_ENV",
+      "value": "preview",
+      "type": "plain",
+      "target": ["preview"]
+    },
+    {
+      "key": "VITE_APP_ENV",
+      "value": "development",
+      "type": "plain",
+      "target": ["development"]
+    },
+    {
+      "key": "VITE_APP_VERSION",
+      "value": "@vercel-env-VERCEL_GIT_COMMIT_SHA",
+      "type": "system",
+      "target": ["production", "preview", "development"]
+    },
+    {
+      "key": "VITE_BUILD_TIME",
+      "value": "@vercel-env-BUILD_TIMESTAMP",
+      "type": "system",
+      "target": ["production", "preview", "development"]
+    },
+    {
+      "key": "VITE_GIT_BRANCH",
+      "value": "@vercel-env-VERCEL_GIT_COMMIT_REF",
+      "type": "system",
+      "target": ["production", "preview", "development"]
+    },
+    {
+      "key": "VITE_GIT_COMMIT",
+      "value": "@vercel-env-VERCEL_GIT_COMMIT_SHA",
+      "type": "system",
+      "target": ["production", "preview", "development"]
+    }
+  ],
+
+  "build": {
+    "env": {
+      "NODE_VERSION": "18",
+      "NPM_CONFIG_FUND": "false",
+      "NPM_CONFIG_AUDIT": "false",
+      "SKIP_ENV_VALIDATION": "1"
+    }
+  },
+
+  "functions": {
+    "app/api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+
+  "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+
+  "regions": ["iad1", "sfo1"],
+
+  "aliases": ["atlas-app.vercel.app", "atlas-platform.vercel.app"],
+
+  "github": {
+    "enabled": true,
+    "autoAlias": true,
+    "autoJobCancelation": true,
+    "deploymentProtection": {
+      "main": true
+    }
+  }
+}

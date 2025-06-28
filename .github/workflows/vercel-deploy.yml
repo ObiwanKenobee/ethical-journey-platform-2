@@ -1,0 +1,249 @@
+name: Vercel Deployment with Conflict Resolution
+
+on:
+  push:
+    branches:
+      - main
+      - development
+      - staging
+      - "feature/*"
+      - "hotfix/*"
+  pull_request:
+    branches:
+      - main
+      - development
+
+concurrency:
+  group: vercel-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  # Pre-deployment validation
+  validate:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      deployment-type: ${{ steps.check.outputs.deployment-type }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for conflicts
+        id: conflict-check
+        run: |
+          # Check if this is a conflict resolution commit
+          if [[ "${{ github.event.head_commit.message }}" =~ "resolve.*conflict" ]] || [[ "${{ github.event.head_commit.message }}" =~ "merge.*conflict" ]]; then
+            echo "conflict-resolution=true" >> $GITHUB_OUTPUT
+            echo "🔧 Conflict resolution commit detected"
+          else
+            echo "conflict-resolution=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: TypeScript check
+        run: npm run typecheck
+
+      - name: Lint check
+        run: npm run lint
+
+      - name: Build test
+        run: npm run build
+
+      - name: Determine deployment strategy
+        id: check
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
+
+          echo "Branch: $BRANCH_NAME"
+          echo "Commit: $COMMIT_MESSAGE"
+
+          # Skip deployment for docs-only changes
+          if [[ "$COMMIT_MESSAGE" =~ ^\[docs\] ]] || [[ "$COMMIT_MESSAGE" =~ ^docs: ]]; then
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "deployment-type=skip" >> $GITHUB_OUTPUT
+            echo "📚 Documentation-only change - skipping deployment"
+            exit 0
+          fi
+
+          # Determine deployment type based on branch
+          case $BRANCH_NAME in
+            main)
+              echo "should-deploy=true" >> $GITHUB_OUTPUT
+              echo "deployment-type=production" >> $GITHUB_OUTPUT
+              echo "🚀 Production deployment"
+              ;;
+            development)
+              echo "should-deploy=true" >> $GITHUB_OUTPUT  
+              echo "deployment-type=preview" >> $GITHUB_OUTPUT
+              echo "🧪 Development preview deployment"
+              ;;
+            staging)
+              echo "should-deploy=true" >> $GITHUB_OUTPUT
+              echo "deployment-type=preview" >> $GITHUB_OUTPUT
+              echo "🎭 Staging preview deployment"
+              ;;
+            feature/*|hotfix/*)
+              echo "should-deploy=true" >> $GITHUB_OUTPUT
+              echo "deployment-type=preview" >> $GITHUB_OUTPUT
+              echo "🔧 Feature/hotfix preview deployment"
+              ;;
+            *)
+              echo "should-deploy=false" >> $GITHUB_OUTPUT
+              echo "deployment-type=skip" >> $GITHUB_OUTPUT
+              echo "⏭️ Skipping deployment for branch: $BRANCH_NAME"
+              ;;
+          esac
+
+  # Deploy to Vercel
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.should-deploy == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=${{ needs.validate.outputs.deployment-type == 'production' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: vercel build ${{ needs.validate.outputs.deployment-type == 'production' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Project Artifacts to Vercel
+        id: deploy
+        run: |
+          DEPLOYMENT_URL=$(vercel deploy ${{ needs.validate.outputs.deployment-type == 'production' && '--prod' || '--prebuilt' }} --token=${{ secrets.VERCEL_TOKEN }})
+          echo "deployment-url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "🚀 Deployed to: $DEPLOYMENT_URL"
+
+      - name: Update deployment status
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const deploymentUrl = '${{ steps.deploy.outputs.deployment-url }}';
+            const deploymentType = '${{ needs.validate.outputs.deployment-type }}';
+
+            const comment = `
+            ## 🚀 Vercel Deployment ${deploymentType === 'production' ? 'Production' : 'Preview'}
+
+            **Status**: ✅ Successfully deployed
+            **URL**: ${deploymentUrl}
+            **Environment**: ${deploymentType}
+            **Branch**: \`${{ github.ref_name }}\`
+            **Commit**: \`${{ github.event.pull_request.head.sha }}\`
+
+            ### Quick Links
+            - 🌐 [Live Preview](${deploymentUrl})
+            - 📊 [Deployment Logs](https://vercel.com/${{ secrets.VERCEL_ORG_ID }}/${{ secrets.VERCEL_PROJECT_ID }})
+            - 🔧 [Vercel Dashboard](https://vercel.com/dashboard)
+
+            ---
+
+            This deployment was automatically triggered by the Vercel integration.
+            `;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Alias production deployment
+        if: needs.validate.outputs.deployment-type == 'production'
+        run: |
+          vercel alias ${{ steps.deploy.outputs.deployment-url }} atlas-app.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
+          vercel alias ${{ steps.deploy.outputs.deployment-url }} atlas-platform.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
+
+  # Post-deployment checks
+  post-deploy:
+    name: Post-deployment Verification
+    runs-on: ubuntu-latest
+    needs: [validate, deploy]
+    if: needs.validate.outputs.should-deploy == 'true'
+
+    steps:
+      - name: Health check
+        run: |
+          DEPLOYMENT_URL="${{ needs.deploy.outputs.deployment-url }}"
+
+          # Wait for deployment to be ready
+          sleep 30
+
+          # Check if deployment is accessible
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOYMENT_URL" || echo "000")
+
+          if [[ "$HTTP_STATUS" == "200" ]]; then
+            echo "✅ Deployment health check passed"
+          else
+            echo "❌ Deployment health check failed (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
+
+      - name: Lighthouse performance check
+        if: needs.validate.outputs.deployment-type == 'production'
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            ${{ needs.deploy.outputs.deployment-url }}
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Notify deployment success
+        if: needs.validate.outputs.deployment-type == 'production'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deploymentUrl = '${{ needs.deploy.outputs.deployment-url }}';
+
+            // Create a deployment status
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment?.id || 0,
+              state: 'success',
+              environment_url: deploymentUrl,
+              description: 'Deployment successful on Vercel'
+            });
+
+  # Cleanup failed deployments
+  cleanup:
+    name: Cleanup Failed Deployments
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [deploy]
+
+    steps:
+      - name: Cleanup failed deployment
+        run: |
+          echo "🧹 Cleaning up failed deployment"
+          # Add cleanup logic here if needed

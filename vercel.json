@@ -1,0 +1,169 @@
+{
+  "version": 2,
+  "name": "atlas-platform",
+  "alias": ["atlas-app", "atlas-platform"],
+
+  "build": {
+    "env": {
+      "NODE_VERSION": "18",
+      "NPM_CONFIG_FUND": "false",
+      "NPM_CONFIG_AUDIT": "false"
+    }
+  },
+
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm ci",
+  "devCommand": "npm run dev",
+
+  "framework": "vite",
+
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "development": true
+    },
+    "silent": false
+  },
+
+  "github": {
+    "enabled": true,
+    "autoAlias": true,
+    "autoJobCancelation": true
+  },
+
+  "env": {
+    "NODE_ENV": "production",
+    "VITE_APP_ENV": "production",
+    "VITE_APP_VERSION": "@vercel-env-GIT_COMMIT_SHA",
+    "VITE_BUILD_TIME": "@vercel-env-BUILD_TIMESTAMP",
+    "VITE_GIT_BRANCH": "@vercel-env-VERCEL_GIT_COMMIT_REF",
+    "VITE_GIT_COMMIT": "@vercel-env-VERCEL_GIT_COMMIT_SHA"
+  },
+
+  "functions": {
+    "app/api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30
+    }
+  },
+
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+
+  "redirects": [
+    {
+      "source": "/home",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/docs",
+      "destination": "/platform",
+      "permanent": false
+    }
+  ],
+
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ],
+
+  "cleanUrls": true,
+  "trailingSlash": false,
+
+  "regions": ["iad1", "sfo1", "fra1"],
+
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+
+  "crons": [
+    {
+      "path": "/api/health-check",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}

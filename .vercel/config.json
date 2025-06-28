@@ -1,0 +1,94 @@
+{
+  "version": 3,
+  "name": "atlas-platform",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist",
+        "buildCommand": "npm run build",
+        "installCommand": "npm ci"
+      }
+    }
+  ],
+
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "development": true,
+      "staging": true,
+      "preview/*": true,
+      "feature/*": true
+    },
+    "silent": false
+  },
+
+  "github": {
+    "enabled": true,
+    "autoAlias": true,
+    "autoJobCancelation": true,
+    "deploymentProtection": {
+      "main": true,
+      "development": false
+    }
+  },
+
+  "buildCommand": "npm run build:prod",
+  "devCommand": "npm run dev",
+  "installCommand": "npm ci",
+  "outputDirectory": "dist",
+
+  "ignoreCommand": "bash .vercel/ignore-build.sh",
+
+  "env": {
+    "NODE_ENV": {
+      "development": "development",
+      "preview": "preview",
+      "production": "production"
+    },
+    "VITE_APP_ENV": {
+      "development": "development",
+      "preview": "preview",
+      "production": "production"
+    }
+  },
+
+  "build": {
+    "env": {
+      "NODE_VERSION": "18",
+      "NPM_CONFIG_FUND": "false",
+      "NPM_CONFIG_AUDIT": "false",
+      "SKIP_ENV_VALIDATION": "1"
+    }
+  },
+
+  "functions": {
+    "app/api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+
+  "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+
+  "cleanUrls": true,
+  "trailingSlash": false,
+
+  "regions": ["iad1"],
+
+  "framework": "vite"
+}
