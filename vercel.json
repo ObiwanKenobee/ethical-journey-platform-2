@@ -41,12 +41,7 @@
     "VITE_GIT_COMMIT": "@vercel-env-VERCEL_GIT_COMMIT_SHA"
   },
 
-  "functions": {
-    "app/api/**/*.ts": {
-      "runtime": "nodejs18.x",
-      "maxDuration": 30
-    }
-  },
+
 
   "routes": [
     {

@@ -92,13 +92,7 @@
     }
   },
 
-  "functions": {
-    "app/api/**/*.ts": {
-      "runtime": "nodejs18.x",
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  },
+  
 
   "routes": [
     {
